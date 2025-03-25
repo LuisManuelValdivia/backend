@@ -1,5 +1,6 @@
 // backend/src/controllers/productController.ts
 import { Request, Response } from 'express';
+//import { MulterRequest } from '../types'; // Adjust the path as necessary
 import Product from '../models/productModel';
 import cloudinary from '../config/cloudinary';
 
@@ -13,24 +14,33 @@ export const crearProducto = async (req: Request, res: Response) => {
       descripcion,
       stock,
       proveedor,
+      categoria,
       imagenes
     } = req.body;
 
-    // Validar en el backend
     if (!codigo?.trim()) {
-      return res.status(400).json({ message: 'Código vacío.' });
+      res.status(400).json({ message: 'Código vacío.' });
+      return 
     }
     if (Number(precio) < 0) {
-      return res.status(400).json({ message: 'El precio no puede ser negativo.' });
+      res.status(400).json({ message: 'El precio no puede ser negativo.' });
+      return 
     }
     if (Number(stock) < 0) {
-      return res.status(400).json({ message: 'El stock no puede ser negativo.' });
+      res.status(400).json({ message: 'El stock no puede ser negativo.' });
+      return 
     }
     if (!proveedor?.trim()) {
-      return res.status(400).json({ message: 'Proveedor vacío.' });
+      res.status(400).json({ message: 'Proveedor vacío.' });
+      return 
+    }
+    if (!categoria?.trim()) {
+      res.status(400).json({ message: 'Categoría vacía.' });
+      return 
     }
     if (!imagenes || imagenes.length === 0) {
-      return res.status(400).json({ message: 'Debe incluir al menos una imagen.' });
+      res.status(400).json({ message: 'Debe incluir al menos una imagen.' });
+      return 
     }
 
     const newProd = new Product({
@@ -40,36 +50,65 @@ export const crearProducto = async (req: Request, res: Response) => {
       descripcion,
       stock,
       proveedor,
+      categoria,
       imagenes
     });
 
     await newProd.save();
-    return res.status(201).json({ message: 'Producto creado con éxito' });
+    res.status(201).json({ message: 'Producto creado con éxito' });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al crear producto.' });
+    res.status(500).json({ message: 'Error al crear producto.' });
+    return 
   }
 };
 
-/** Listar productos (con búsqueda) */
+/** Listar productos (con búsqueda, categoría y paginación) */
 export const obtenerProductos = async (req: Request, res: Response) => {
   try {
-    const { search } = req.query;
-    let query = {};
+    const { search, category, page, limit } = req.query;
+
+    // Manejo de paginación
+    const pageNumber = Number(page) || 1;
+    const pageLimit = Number(limit) || 6; // 6 por defecto
+
+    let query: any = {};
+
+    // Filtro por búsqueda
     if (search && typeof search === 'string') {
-      // Buscar por nombre o código (case-insensitive)
-      query = {
-        $or: [
-          { nombre: { $regex: search, $options: 'i' } },
-          { codigo: { $regex: search, $options: 'i' } }
-        ]
-      };
+      query.$or = [
+        { nombre: { $regex: search, $options: 'i' } },
+        { codigo: { $regex: search, $options: 'i' } }
+      ];
     }
-    const productos = await Product.find(query);
-    return res.json(productos);
+
+    // Filtro por categoría
+    if (category && typeof category === 'string' && category.trim() !== '') {
+      query.categoria = category;
+    }
+
+    // Calcular paginación
+    const skip = (pageNumber - 1) * pageLimit;
+
+    // Obtener productos filtrados con paginación
+    const productos = await Product.find(query)
+      .skip(skip)
+      .limit(pageLimit);
+
+    // Opcional: contar el total para calcular páginas
+    const total = await Product.countDocuments(query);
+
+    res.json({
+      products: productos,
+      currentPage: pageNumber,
+      totalPages: Math.ceil(total / pageLimit)
+    });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al obtener productos.' });
+    res.status(500).json({ message: 'Error al obtener productos.' });
+    return 
   }
 };
 
@@ -79,12 +118,15 @@ export const obtenerProducto = async (req: Request, res: Response) => {
     const { id } = req.params;
     const prod = await Product.findById(id);
     if (!prod) {
-      return res.status(404).json({ message: 'Producto no encontrado.' });
+      res.status(404).json({ message: 'Producto no encontrado.' });
+      return 
     }
-    return res.json(prod);
+    res.json(prod);
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al obtener producto.' });
+    res.status(500).json({ message: 'Error al obtener producto.' });
+    return 
   }
 };
 
@@ -99,28 +141,32 @@ export const actualizarProducto = async (req: Request, res: Response) => {
       descripcion,
       stock,
       proveedor,
+      categoria,
       imagenes
     } = req.body;
 
     const prod = await Product.findById(id);
     if (!prod) {
-      return res.status(404).json({ message: 'Producto no encontrado.' });
+      res.status(404).json({ message: 'Producto no encontrado.' });
+      return 
     }
 
-    // Actualizar campos si vienen en el body
     if (codigo !== undefined) prod.codigo = codigo;
     if (nombre !== undefined) prod.nombre = nombre;
     if (precio !== undefined) prod.precio = precio;
     if (descripcion !== undefined) prod.descripcion = descripcion;
     if (stock !== undefined) prod.stock = stock;
     if (proveedor !== undefined) prod.proveedor = proveedor;
+    if (categoria !== undefined) prod.categoria = categoria;
     if (imagenes !== undefined) prod.imagenes = imagenes;
 
     await prod.save();
-    return res.json({ message: 'Producto actualizado con éxito.' });
+    res.json({ message: 'Producto actualizado con éxito.' });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al actualizar producto.' });
+    res.status(500).json({ message: 'Error al actualizar producto.' });
+    return 
   }
 };
 
@@ -130,30 +176,32 @@ export const eliminarProducto = async (req: Request, res: Response) => {
     const { id } = req.params;
     const prod = await Product.findByIdAndDelete(id);
     if (!prod) {
-      return res.status(404).json({ message: 'Producto no encontrado.' });
+      res.status(404).json({ message: 'Producto no encontrado.' });
+      return 
     }
-    return res.json({ message: 'Producto eliminado con éxito.' });
+    res.json({ message: 'Producto eliminado con éxito.' });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al eliminar producto.' });
+    res.status(500).json({ message: 'Error al eliminar producto.' });
+    return 
   }
 };
 
 /** Subir Imagen a Cloudinary (si quieres manejar la subida desde el Backend) */
-export const subirImagen = async (req: Request, res: Response) => {
+export const subirImagen = async (req: MulterRequest, res: Response) => {
   try {
-    // Asume que usas Multer y tu archivo vendrá en `req.file`
     if (!req.file) {
-      return res.status(400).json({ message: 'No se envió ningún archivo.' });
+      res.status(400).json({ message: 'No se envió ningún archivo.' });
+      return 
     }
-
-    const filePath = req.file.path; // Multer lo habrá guardado localmente
-    // Sube a Cloudinary
+    const filePath = req.file.path;
     const uploadResp = await cloudinary.uploader.upload(filePath);
-    // Retornamos la URL pública
-    return res.json({ secure_url: uploadResp.secure_url });
+    res.json({ secure_url: uploadResp.secure_url });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al subir imagen a Cloudinary' });
+    res.status(500).json({ message: 'Error al subir imagen a Cloudinary' });
+    return 
   }
 };

@@ -9,12 +9,15 @@ export const obtenerCompany = async (req: Request, res: Response) => {
     // Buscar el documento con ese _id en la colección "company"
     const company = await Company.findById(id);
     if (!company) {
-      return res.status(404).json({ message: 'Información de empresa no encontrada.' });
+      res.status(404).json({ message: 'Información de empresa no encontrada.' });
+      return 
     }
-    return res.json(company);
+    res.json(company);
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al obtener la información de empresa.' });
+    res.status(500).json({ message: 'Error al obtener la información de empresa.' });
+    return 
   }
 };
 
@@ -36,7 +39,8 @@ export const actualizarCompany = async (req: Request, res: Response) => {
 
     const company = await Company.findById(id);
     if (!company) {
-      return res.status(404).json({ message: 'Información de empresa no encontrada.' });
+      res.status(404).json({ message: 'Información de empresa no encontrada.' });
+      return 
     }
 
     // Actualizar campos solo si vienen en el body
@@ -51,9 +55,11 @@ export const actualizarCompany = async (req: Request, res: Response) => {
     if (politicasPrivacidad !== undefined) company.politicasPrivacidad = politicasPrivacidad;
 
     await company.save();
-    return res.json({ message: 'Información de empresa actualizada con éxito.' });
+    res.json({ message: 'Información de empresa actualizada con éxito.' });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al actualizar la información de empresa.' });
+    res.status(500).json({ message: 'Error al actualizar la información de empresa.' });
+    return 
   }
 };

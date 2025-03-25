@@ -8,7 +8,9 @@ import userRoutes from './routes/userRoutes';
 import productRoutes from './routes/productRoutes';
 import companyRoutes from './routes/companyRoutes';
 
-import cortinaRoutes from "./routes/cortinaRoutes";
+import cortinaRoutes from './routes/cortinaRoutes';
+import deviceRoutes from './routes/deviceRoutes';
+
 import mqttClient from "./config/mqttClient"; // para inicializar
 
 // Cargar las variables de entorno desde .env
@@ -62,9 +64,11 @@ app.use('/api/products', productRoutes);
 app.use('/api/company', companyRoutes);
 
 // Rutas
-app.use("/api/cortina", cortinaRoutes);
+//app.use("/api/cortina", cortinaRoutes);
 
-// app.use('/api/users', userRoutes); // etc...
+app.use('/api/cortina', cortinaRoutes);
+//app.use('/api/users', userRoutes); // etc...
+app.use('/api/devices', deviceRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);

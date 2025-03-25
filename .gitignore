@@ -10,7 +10,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Directorios de compilación
-dist/
 build/
 
 # Archivos de sistema

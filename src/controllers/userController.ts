@@ -1,6 +1,17 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import User from '../models/userModel';
+import Device from "../models/deviceModel";
+import { Interface } from 'readline';
+import { Isession } from '../models/sessionModel';
+
+declare global {
+  namespace Express {
+      interface Request {
+          session?: Isession & { user?: { _id: string; rol: string; nombre: string; correo: string; deviceId?: string } };
+      }
+  }
+}
 
 // Registro
 export const registerUser = async (req: Request, res: Response) => {
@@ -10,7 +21,8 @@ export const registerUser = async (req: Request, res: Response) => {
     // Verificar si el correo ya está en uso
     const userExists = await User.findOne({ correo });
     if (userExists) {
-      return res.status(400).json({ message: 'El correo ya está registrado.' });
+      res.status(400).json({ message: 'El correo ya está registrado.' });
+      return 
     }
 
     // Hashear contraseña
@@ -30,10 +42,12 @@ export const registerUser = async (req: Request, res: Response) => {
     });
 
     await newUser.save();
-    return res.status(201).json({ message: 'Usuario registrado con éxito.' });
+    res.status(201).json({ message: 'Usuario registrado con éxito.' });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al registrar usuario.' });
+    res.status(500).json({ message: 'Error al registrar usuario.' });
+    return 
   }
 };
 
@@ -44,33 +58,41 @@ export const loginUser = async (req: Request, res: Response) => {
 
     const user = await User.findOne({ correo });
     if (!user) {
-      return res.status(400).json({ message: 'Usuario no encontrado.' });
+      res.status(400).json({ message: 'Usuario no encontrado.' });
+      return 
     }
 
     const isMatch = await bcrypt.compare(contraseña, user.contraseña);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Contraseña incorrecta.' });
+      res.status(400).json({ message: 'Contraseña incorrecta.' });
+      return 
     }
+
+    // Obtener el dispositivo vinculado, si existe
+    const device = await Device.findOne({ user: user._id });
 
     // Guardar info de sesión
     req.session.user = {
       _id: user._id,
       nombre: user.nombre,
       correo: user.correo,
-      rol: user.rol // o lo que necesites
+      rol: user.rol, // o lo que necesites
+      deviceId: device ? device.mac : null  // Incluir deviceId en la sesión
     };
 
-    return res.json({
+    res.json({
       message: 'Login exitoso.',
       user: {
         userId: user._id,
         nombre: user.nombre,
-        rol: user.rol
+        rol: user.rol,
+        deviceId: device ? device.mac : null  // Enviar deviceId al frontend
       }
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al iniciar sesión.' });
+    res.status(500).json({ message: 'Error al iniciar sesión.' });
+    return 
   }
 };
 
@@ -78,28 +100,32 @@ export const logoutUser = async (req: Request, res: Response) => {
   req.session.destroy((err) => {
     if (err) {
       console.error(err);
-      return res.status(500).json({ message: 'Error al cerrar sesión.' });
+      res.status(500).json({ message: 'Error al cerrar sesión.' });
+      return 
     }
     res.clearCookie('connect.sid'); // 'connect.sid' es el nombre por defecto
-    return res.json({ message: 'Sesión cerrada con éxito.' });
+    res.json({ message: 'Sesión cerrada con éxito.' });
+    return 
   });
 };
 
 export const checkAuth = async (req: Request, res: Response) => {
   if (req.session.user) {
-    return res.json({
+    res.json({
       loggedIn: true,
       user: req.session.user
     });
+    return 
   } else {
-    return res.json({ loggedIn: false });
+    res.json({ loggedIn: false });
   }
 };
 
 /** Actualizar perfil (todos los campos opcionales) */
 export const updateProfile = async (req: Request, res: Response) => {
   if (!req.session.user) {
-    return res.status(401).json({ message: 'No está autorizado.' });
+    res.status(401).json({ message: 'No está autorizado.' });
+    return 
   }
 
   try {
@@ -107,17 +133,20 @@ export const updateProfile = async (req: Request, res: Response) => {
     const userId = req.session.user._id;
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado.' });
+      res.status(404).json({ message: 'Usuario no encontrado.' });
+      return 
     }
 
     // Actualizar correo, si se proporciona, con validación
     if (correo !== undefined) {
       if (!correo.trim()) {
-        return res.status(400).json({ message: 'El correo no puede estar vacío.' });
+        res.status(400).json({ message: 'El correo no puede estar vacío.' });
+        return 
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(correo)) {
-        return res.status(400).json({ message: 'El formato del correo no es válido.' });
+        res.status(400).json({ message: 'El formato del correo no es válido.' });
+        return 
       }
       user.correo = correo;
     }
@@ -145,10 +174,12 @@ export const updateProfile = async (req: Request, res: Response) => {
     }
 
     await user.save();
-    return res.json({ message: 'Perfil actualizado correctamente.' });
+    res.json({ message: 'Perfil actualizado correctamente.' });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al actualizar perfil.' });
+    res.status(500).json({ message: 'Error al actualizar perfil.' });
+    return 
   }
 };
 
@@ -159,12 +190,14 @@ export const recoverPassword = async (req: Request, res: Response) => {
 
     const user = await User.findOne({ correo, preguntaSecreta });
     if (!user) {
-      return res.status(400).json({ message: 'Datos incorrectos.' });
+      res.status(400).json({ message: 'Datos incorrectos.' });
+      return 
     }
 
     const isCorrectAnswer = await bcrypt.compare(respuestaSecreta, user.respuestaSecreta);
     if (!isCorrectAnswer) {
-      return res.status(400).json({ message: 'Respuesta secreta incorrecta.' });
+      res.status(400).json({ message: 'Respuesta secreta incorrecta.' });
+      return 
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -173,10 +206,12 @@ export const recoverPassword = async (req: Request, res: Response) => {
     user.contraseña = hashedPass;
     await user.save();
 
-    return res.json({ message: 'Contraseña actualizada exitosamente.' });
+    res.json({ message: 'Contraseña actualizada exitosamente.' });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al recuperar contraseña.' });
+    res.status(500).json({ message: 'Error al recuperar contraseña.' });
+    return 
   }
 };
 
@@ -185,18 +220,22 @@ export const getUserQuestion = async (req: Request, res: Response) => {
   try {
     const { correo } = req.query;
     if (!correo) {
-      return res.status(400).json({ message: 'Se requiere un correo.' });
+      res.status(400).json({ message: 'Se requiere un correo.' });
+      return 
     }
 
     const user = await User.findOne({ correo });
     if (!user) {
-      return res.status(404).json({ message: 'No se encontró un usuario con ese correo.' });
+      res.status(404).json({ message: 'No se encontró un usuario con ese correo.' });
+      return 
     }
 
-    return res.json({ preguntaSecreta: user.preguntaSecreta });
+    res.json({ preguntaSecreta: user.preguntaSecreta });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al obtener la pregunta secreta.' });
+    res.status(500).json({ message: 'Error al obtener la pregunta secreta.' });
+    return 
   }
 };
 
@@ -212,10 +251,12 @@ export const listarUsuarios = async (req: Request, res: Response) => {
     }
     // Retornamos solo los campos necesarios para el panel: nombre, correo, teléfono y rol.
     const usuarios = await User.find(query, { nombre: 1, correo: 1, telefono: 1, rol: 1 });
-    return res.json(usuarios);
+    res.json(usuarios);
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al obtener usuarios.' });
+    res.status(500).json({ message: 'Error al obtener usuarios.' });
+    return 
   }
 };
 
@@ -225,12 +266,15 @@ export const eliminarUsuario = async (req: Request, res: Response) => {
     const { id } = req.params;
     const usuario = await User.findByIdAndDelete(id);
     if (!usuario) {
-      return res.status(404).json({ message: 'Usuario no encontrado.' });
+      res.status(404).json({ message: 'Usuario no encontrado.' });
+      return 
     }
-    return res.json({ message: 'Usuario eliminado con éxito.' });
+    res.json({ message: 'Usuario eliminado con éxito.' });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al eliminar usuario.' });
+    res.status(500).json({ message: 'Error al eliminar usuario.' });
+    return 
   }
 };
 
@@ -242,17 +286,20 @@ export const actualizarUsuario = async (req: Request, res: Response) => {
     
     const usuario = await User.findById(id);
     if (!usuario) {
-      return res.status(404).json({ message: 'Usuario no encontrado.' });
+      res.status(404).json({ message: 'Usuario no encontrado.' });
+      return 
     }
     
     if (nombre !== undefined) usuario.nombre = nombre;
     if (correo !== undefined) {
       if (!correo.trim()) {
-        return res.status(400).json({ message: 'El correo no puede estar vacío.' });
+        res.status(400).json({ message: 'El correo no puede estar vacío.' });
+        return 
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(correo)) {
-        return res.status(400).json({ message: 'El formato del correo no es válido.' });
+        res.status(400).json({ message: 'El formato del correo no es válido.' });
+        return 
       }
       usuario.correo = correo;
     }
@@ -266,10 +313,12 @@ export const actualizarUsuario = async (req: Request, res: Response) => {
     }
     
     await usuario.save();
-    return res.json({ message: 'Usuario actualizado con éxito.' });
+    res.json({ message: 'Usuario actualizado con éxito.' });
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al actualizar usuario.' });
+    res.status(500).json({ message: 'Error al actualizar usuario.' });
+    return 
   }
 };
 
@@ -279,11 +328,16 @@ export const obtenerUsuario = async (req: Request, res: Response) => {
     const { id } = req.params;
     const usuario = await User.findById(id);
     if (!usuario) {
-      return res.status(404).json({ message: 'Usuario no encontrado.' });
+      res.status(404).json({ message: 'Usuario no encontrado.' });
+      return 
     }
-    return res.json(usuario);
+    res.json(usuario);
+    return 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al obtener usuario.' });
+    res.status(500).json({ message: 'Error al obtener usuario.' });
+    return 
   }
 };
+
+// Ejemplo en userController.ts

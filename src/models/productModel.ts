@@ -8,6 +8,7 @@ export interface IProduct extends Document {
   descripcion: string;
   stock: number;
   proveedor: string;
+  categoria: string; // Se añade categoría
   imagenes: string[]; // array de URLs
 }
 
@@ -18,6 +19,7 @@ const productSchema = new Schema({
   descripcion: { type: String, required: true },
   stock: { type: Number, required: true },
   proveedor: { type: String, required: true },
+  categoria: { type: String, required: true },
   imagenes: { type: [String], required: true }
 }, {
   timestamps: true
