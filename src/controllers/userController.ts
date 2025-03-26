@@ -5,13 +5,19 @@ import Device from "../models/deviceModel";
 import { Interface } from 'readline';
 import { Isession } from '../models/sessionModel';
 
-declare global {
-  namespace Express {
-      interface Request {
-          session?: Isession & { user?: { _id: string; rol: string; nombre: string; correo: string; deviceId?: string } };
-      }
+declare module 'express-session' {
+  interface SessionData {
+    user: {
+      _id: string;
+      nombre: string;
+      correo: string;
+      rol: string;
+      deviceId: string | null;
+    };
   }
 }
+
+
 
 // Registro
 export const registerUser = async (req: Request, res: Response) => {
@@ -73,7 +79,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
     // Guardar info de sesión
     req.session.user = {
-      _id: user._id,
+      _id: user._id as string,
       nombre: user.nombre,
       correo: user.correo,
       rol: user.rol, // o lo que necesites

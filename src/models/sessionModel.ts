@@ -10,8 +10,3 @@ export interface Isession {
     deviceId: string;
   };
 }
-
-export interface Isession {
-    _id: string;
-    rol: string;
-}

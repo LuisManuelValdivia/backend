@@ -189,7 +189,7 @@ export const eliminarProducto = async (req: Request, res: Response) => {
 };
 
 /** Subir Imagen a Cloudinary (si quieres manejar la subida desde el Backend) */
-export const subirImagen = async (req: MulterRequest, res: Response) => {
+export const subirImagen = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       res.status(400).json({ message: 'No se envió ningún archivo.' });
