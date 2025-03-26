@@ -18,6 +18,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const FRONTEND = process.env.FRONTEND_URL;
 
 // Conectar a MongoDB Atlas
 connectDB(); // dentro usa process.env.MONGO_URI
@@ -25,7 +26,7 @@ connectDB(); // dentro usa process.env.MONGO_URI
 // Habilitar CORS incluyendo credenciales (cookies)
 app.use(
   cors({
-    origin: 'http://localhost:3000', // tu frontend
+    origin: FRONTEND, // tu frontend
     credentials: true
   })
 );

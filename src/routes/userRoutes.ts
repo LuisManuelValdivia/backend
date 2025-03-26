@@ -10,8 +10,7 @@ import {
   listarUsuarios,      // Agregado
   eliminarUsuario,      // Agregado
   actualizarUsuario,       // Nueva función a crear
-  obtenerUsuario,
-  getMyDevice
+  obtenerUsuario
 } from '../controllers/userController';
 
 const router = Router();
